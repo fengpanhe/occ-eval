@@ -466,7 +466,8 @@ Matrix::operator() (int row, int col)
             "Index (%d,%d) exceeds matrix dimensions (%d,%d).",
             row, col, _rows, _cols));
     }
-    int index = col*_rows + row;
+//     int index = col*_rows + row;
+    int index = row * _cols + col;
     return _data[index];
 }
 
@@ -479,7 +480,8 @@ Matrix::operator() (int row, int col) const
             "Index (%d,%d) exceeds matrix dimensions (%d,%d).",
             row, col, _rows, _cols));
     }
-    int index = col*_rows + row;
+//     int index = col*_rows + row;
+    int index = row * _cols + col;
     return _data[index];
 }
 

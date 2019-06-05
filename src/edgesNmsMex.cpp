@@ -8,8 +8,8 @@
 #ifdef USEOMP
 #include <omp.h>
 #endif
- #include <iostream>
- using namespace std;
+// #include <iostream>
+// using namespace std;
 
 int h_ =  0, w_ = 0;
 
@@ -33,10 +33,10 @@ inline float interp(float* I, int h, int w, float x, float y)
 extern "C" void edgesNms(float* E0, float* O, float* E, int h, int w, int r, int s, float m, int nThreads)
 {
     // cout << "m:" << m << endl;
+//    cout << h << ' ' << w << '\n';
+//    cout << E0[0] << ' ' << E0[1] << ' ' << E0[2] << ' ' << E0[3] << '\n';
     h_ = h;
     w_ = w;
-    cout << h << ' ' << w << '\n';
-    cout << E0[0] << ' ' << E0[1] << ' ' << E0[2] << ' ' << E0[3] << '\n';
     for (int x = 0; x < w; x++)
         for (int y = 0; y < h; y++) {
             float e = E[getIndex(x, y)] = E0[getIndex(x, y)];
