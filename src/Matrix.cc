@@ -8,7 +8,6 @@
 #include "Matrix.hh"
 #include "Exception.hh"
 #include "String.hh"
-
 #if NEXTPOW2
 #include <ieee754.h>
 #endif // NEXTPOW2
@@ -37,7 +36,7 @@ extern "C" void dgemm_( // C := alpha*op(A)*op(B) + beta*C
     int* m, int* n, int* k, 
     double* alpha, double* a, int* lda, 
     double* b, int* ldb, 
-    double* beta, double* c, int* ldc);
+    double* beta, double* c, int* ldc){}
 #endif
 
 // nan, inf

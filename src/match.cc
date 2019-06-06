@@ -321,12 +321,14 @@ matchEdgeMaps (
         for (int y = 0; y < height; y++) {
             if (bmap1(y,x)) {
                 if (match1(x,y) != Pixel(-1,-1)) {
-                    m1(y,x) = match1(x,y).x*height + match1(x,y).y + 1;
+                    // m1(y,x) = match1(x,y).x*height + match1(x,y).y + 1;
+                    m1(y,x) = match1(x,y).x + match1(x,y).y*width;
                 }
             }
             if (bmap2(y,x)) {
                 if (match2(x,y) != Pixel(-1,-1)) {
-                    m2(y,x) = match2(x,y).x*height + match2(x,y).y + 1;
+                    // m2(y,x) = match2(x,y).x*height + match2(x,y).y + 1;
+                    m2(y,x) = match2(x,y).x + match2(x,y).y*width;
                 }
             }
         }

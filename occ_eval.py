@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 from scipy import signal
 import h5py
+
 # from numpy.ctypeslib import ndpointer
 
 
@@ -20,8 +21,8 @@ _c_double_array1d = np.ctypeslib.ndpointer(dtype=np.float, ndim=1)
 
 _edges_nms = _mod.edgesNms
 _edges_nms.argtypes = [
-    _c_float_array2d, _c_float_array2d, _c_float_array2d, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-    ctypes.c_int, ctypes.c_float, ctypes.c_int
+    _c_float_array2d, _c_float_array2d, _c_float_array2d, ctypes.c_int,
+    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_float, ctypes.c_int
 ]
 _edges_nms.restype = None
 
@@ -39,8 +40,9 @@ def c_edges_nms(edge_pr, ori, r, s, m, n_threads):
 
 _correspond_pixels = _mod.correspondPixels
 _correspond_pixels.argtypes = [
-    _c_double_array2d, _c_double_array2d, _c_double_array1d,
-    _c_double_array2d, _c_double_array2d, ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.c_double
+    _c_double_array2d, _c_double_array2d, _c_double_array1d, _c_double_array2d,
+    _c_double_array2d, ctypes.c_int, ctypes.c_int, ctypes.c_double,
+    ctypes.c_double
 ]
 _correspond_pixels.restype = None
 
@@ -57,18 +59,60 @@ def c_correspond_pixels(map1, map2, max_dist=0.0075, outlier_cost=100):
     match1 = np.zeros_like(map1)
     match2 = np.zeros_like(map2)
     cost_oc = np.zeros(2, dtype=np.float)
-    _correspond_pixels(match1, match2, cost_oc, map1, map2, h, w, max_dist, outlier_cost)
+    _correspond_pixels(match1, match2, cost_oc, map1, map2, h, w, max_dist,
+                       outlier_cost)
     return match1, match2, cost_oc[0], cost_oc[1]
 
 
+_occ_eval = _mod.occEval
+_occ_eval.argtypes = [
+    _c_double_array2d, ctypes.c_int, ctypes.c_int, _c_double_array2d,
+    _c_double_array2d, _c_double_array2d, _c_double_array2d, ctypes.c_int,
+    ctypes.c_int, _c_double_array1d, ctypes.c_int, ctypes.c_double,
+    ctypes.c_double
+]
+_occ_eval.restype = None
+
+
+def c_occ_eval(pb, gt):
+    if pb.dtype != np.float:
+        pb = pb.astype(np.float)
+    if gt.dtype != np.float:
+        gt = gt.astype(np.float)
+    if pb.shape != gt.shape:
+        print('c_correspond_pixels: map1 和 map2 大小不匹配。')
+        exit()
+    edge_pb = pb[0, :, :]
+    ori_pb = pb[1, :, :]
+    edge_gt = gt[0, :, :]
+    ori_gt = gt[1, :, :]
+    h, w = edge_pb.shape
+
+    edge_pb = edges_nms(edge_pb)
+    if edge_pb.dtype != np.float:
+        edge_pb = edge_pb.astype(np.float)
+
+    thresholds_num = 99
+    thresholds = np.linspace(0, 1, thresholds_num + 2)[1:-1]
+    res = np.zeros((thresholds_num, 9))
+    res[:, 0] = thresholds
+
+    ori_diff = np.array([np.pi / 2, np.pi * 3 / 2])
+    thread_num = 48
+    max_dist = 0.0075
+    _occ_eval(res, thresholds_num, 9, edge_pb, edge_gt, ori_pb, ori_gt, h, w,
+              ori_diff, thread_num, max_dist, 100)
+    return res
+
+
 def triangle_filter(n):
-    f = np.zeros((1+2*n))
+    f = np.zeros((1 + 2 * n))
     for i in range(n):
-        f[i] = i+1
-        f[-i-1] = i+1
+        f[i] = i + 1
+        f[-i - 1] = i + 1
     f[n] = n + 1
     f = f / np.sum(f)
-    ff = np.dot(np.transpose([f]),[f])
+    ff = np.dot(np.transpose([f]), [f])
     return ff
 
 
@@ -116,6 +160,7 @@ def occ_eval(pb, gt):
 
 import matplotlib.pyplot as plt
 
+
 def showimg(a):
     img = plt.imshow(a)
     img.set_cmap('gray')
@@ -133,6 +178,6 @@ if __name__ == "__main__":
     edge_pb = f['edge']
     ori_pb = f['ori_map']
     edge_ori_gt = f['edge_ori_gt']
-    occ_eval(np.stack((edge_pb, ori_pb)), edge_ori_gt)
+    c_occ_eval(np.stack((edge_pb, ori_pb)), np.stack((edge_ori_gt[0, :, :], edge_ori_gt[1, :, :])))
     f.close()
     pass
