@@ -74,35 +74,30 @@ _occ_eval.argtypes = [
 _occ_eval.restype = None
 
 
-def c_occ_eval(pb, gt):
-    if pb.dtype != np.float:
-        pb = pb.astype(np.float)
-    if gt.dtype != np.float:
-        gt = gt.astype(np.float)
-    if pb.shape != gt.shape:
-        print('c_correspond_pixels: map1 和 map2 大小不匹配。')
-        exit()
-    edge_pb = pb[0, :, :]
-    ori_pb = pb[1, :, :]
-    edge_gt = gt[0, :, :]
-    ori_gt = gt[1, :, :]
-    h, w = edge_pb.shape
-
-    edge_pb = edges_nms(edge_pb)
+def c_occ_eval(edge_pb, edge_gt, ori_pb, ori_gt, opt):
     if edge_pb.dtype != np.float:
         edge_pb = edge_pb.astype(np.float)
+    if edge_gt.dtype != np.float:
+        edge_gt = edge_gt.astype(np.float)
+    if ori_pb.dtype != np.float:
+        ori_pb = ori_pb.astype(np.float)
+    if ori_gt.dtype != np.float:
+        ori_gt = ori_gt.astype(np.float)
+    h, w = edge_pb.shape
 
-    thresholds_num = 99
+    thresholds_num = opt['nthresh']
     thresholds = np.linspace(0, 1, thresholds_num + 2)[1:-1]
     res = np.zeros((thresholds_num, 9))
     res[:, 0] = thresholds
 
-    ori_diff = np.array([np.pi / 2, np.pi * 3 / 2])
-    thread_num = 48
-    max_dist = 0.0075
+    ori_diff = opt['ori_diff']
+    thread_num = opt['nthread']
+    max_dist = opt['maxDist']
     _occ_eval(res, thresholds_num, 9, edge_pb, edge_gt, ori_pb, ori_gt, h, w,
               ori_diff, thread_num, max_dist, 100)
-    return res
+    thresholds = res[:, 0]
+    res = res[:, 1:]
+    return thresholds, res
 
 
 def triangle_filter(n):
@@ -134,28 +129,35 @@ def edges_nms(edge_pr):
     return thin_edge
 
 
-def occ_eval(pb, gt):
+def occ_eval_single(pb, gt, opt_in={}):
+    opt = {
+        'nthresh': 99,
+        'maxDist': 0.0075,
+        'nthread': 25,
+        'ori_diff': np.array([np.pi / 2, np.pi * 3 / 2])
+    }
+    opt = {**opt, **opt_in}
+
+    if pb.dtype != np.float:
+        pb = pb.astype(np.float)
+    if gt.dtype != np.float:
+        gt = gt.astype(np.float)
+    if pb.shape != gt.shape:
+        print('c_correspond_pixels: map1 和 map2 大小不匹配。')
+        exit()
+
     edge_pb = pb[0, :, :]
     ori_pb = pb[1, :, :]
     edge_gt = gt[0, :, :]
     ori_gt = gt[1, :, :]
 
     edge_pb = edges_nms(edge_pb)
+    nozero = np.where(edge_pb != 0)
+    edge_pb[nozero] = (edge_pb[nozero] - np.min(edge_pb[nozero])) / np.max(
+        edge_pb[nozero])
 
-    thresholds = np.linspace(0, 1, 101)[1:-1]
-    edge_p_sum = np.zeros(thresholds.shape)
-    edge_p_count = np.zeros(thresholds.shape)
-    edge_r_count = np.zeros(thresholds.shape)
-    edge_r_sum = np.zeros(thresholds.shape)
-    for i in range(99):
-        edge_map = np.zeros_like(edge_pb)
-        edge_map[edge_pb >= thresholds[i]] = 1.0
-        match1, match2, cost, oc = c_correspond_pixels(edge_map, edge_gt)
-        edge_p_count[i] = np.sum(match1 > 0)
-        edge_r_count[i] = np.sum(match2 > 0)
-        edge_p_sum[i] = np.sum(edge_map > 0)
-        edge_r_sum[i] = np.sum(edge_gt > 0)
-    return edge_p_count, edge_p_sum, edge_r_count, edge_r_sum
+    thresholds, res = c_occ_eval(edge_pb, edge_gt, ori_pb, ori_gt, opt)
+    return thresholds, res
 
 
 import matplotlib.pyplot as plt
@@ -178,6 +180,8 @@ if __name__ == "__main__":
     edge_pb = f['edge']
     ori_pb = f['ori_map']
     edge_ori_gt = f['edge_ori_gt']
-    c_occ_eval(np.stack((edge_pb, ori_pb)), np.stack((edge_ori_gt[0, :, :], edge_ori_gt[1, :, :])))
+    c_occ_eval(
+        np.stack((edge_pb, ori_pb)),
+        np.stack((edge_ori_gt[0, :, :], edge_ori_gt[1, :, :])))
     f.close()
     pass

@@ -1,6 +1,7 @@
 #include "OccEval.h"
 #include "iostream"
 #define EPS 1e-6
+#define PI acos(-1)
 using namespace std;
 void occEval(double* res, int res_rows, int res_cols,
     double* edge_pb, double* edge_gt, double* ori_pb, double* ori_gt, int h, int w,
@@ -106,6 +107,7 @@ void MatchPixelNumber::run()
         if (m1(i) > 0.5) {
             edge_p_count++;
             double diff = fabs(ori_pb[i] - ori_gt[int(m1(i))]);
+            diff = fmod(diff, 2 * PI);
             if ((diff + EPS) <= ori_angle_range[0] || (diff - EPS)>= ori_angle_range[1]) {
                 ori_p_count++;
                 ori_r_count++;
